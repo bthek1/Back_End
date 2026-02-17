@@ -1,3 +1,30 @@
 [build-system]
-requires = ["setuptools>=64.0"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "Back_End"
+dynamic = ["version"]
+description = ""
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "Apache-2.0"}
+authors = [{name = "Benedict Thekkel", email = "bthekkel1@gmail.com"}]
+keywords = ['nbdev', 'jupyter', 'notebook', 'python']
+classifiers = ["Natural Language :: English", "Intended Audience :: Developers", "Development Status :: 3 - Alpha", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/bthek1/Back_End"
+Documentation = "https://bthek1.github.io/Back_End"
+
+[project.entry-points.nbdev]
+Back_End = "Back_End._modidx:d"
+
+[tool.setuptools.dynamic]
+version = {attr = "Back_End.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["Back_End"]
+
+[tool.nbdev]

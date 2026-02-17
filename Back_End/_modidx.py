@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://bthek1.github.io',
                 'git_url': 'https://github.com/bthek1/Back_End',
                 'lib_path': 'Back_End'},
-  'syms': {'Back_End.core': {'Back_End.core.foo': ('core.html#foo', 'Back_End/core.py')}}}
+  'syms': {}}
