@@ -1,0 +1,2390 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Benedict Thekkel">
+<meta name="description" content="How a database grows past one machine: query tuning, connection pooling, caching, read replicas, partitioning, sharding, and the distributed systems that do it for you.">
+
+<title>Database Scaling – Back_End</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../Databases/mysql_&amp;_mariadb.html" rel="next">
+<link href="../Databases/sql.html" rel="prev">
+<link href="../favi.svg" rel="icon" type="image/svg+xml">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b626d73c4c936ccc3cb08be7d45d1df6.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-87623689d22b060bad1eefbb2b768960.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-25b2f706efb754904913775f52671bcd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-87623689d22b060bad1eefbb2b768960.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../styles.css">
+<meta property="og:title" content="Database Scaling – Back_End">
+<meta property="og:description" content="How a database grows past one machine: query tuning, connection pooling, caching, read replicas, partitioning, sharding, and the distributed systems that do it for you.">
+<meta property="og:image" content="https://bthek1.github.io/Back_End/Databases/Logo.svg">
+<meta property="og:site_name" content="Back_End">
+<meta name="twitter:title" content="Database Scaling – Back_End">
+<meta name="twitter:description" content="How a database grows past one machine: query tuning, connection pooling, caching, read replicas, partitioning, sharding, and the distributed systems that do it for you.">
+<meta name="twitter:image" content="https://bthek1.github.io/Back_End/Databases/Logo.svg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo light-content">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo dark-content">
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-deep-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Deep Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-deep-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/FastAI_course/">
+ <span class="dropdown-text">Fast AI course</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_methods/">
+ <span class="dropdown-text">DL Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_tasks/">
+ <span class="dropdown-text">DL Tasks</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-ml-techniques" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">ML Techniques</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-ml-techniques">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_methods/">
+ <span class="dropdown-text">ML Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/TimeSeriesML/">
+ <span class="dropdown-text">Time series</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-web" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Web</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-web">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/WEB_doc/">
+ <span class="dropdown-text">Web Development</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Front_End/">
+ <span class="dropdown-text">Front End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Back_End/">
+ <span class="dropdown-text">Back End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/IaaS_docs/">
+ <span class="dropdown-text">IaaS</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-tools" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Tools</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-tools">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Software_Tools/">
+ <span class="dropdown-text">Software Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Hardware_Tools/">
+ <span class="dropdown-text">Hardware Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Python_Libs/">
+ <span class="dropdown-text">Python Libraries</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/nbdevAuto/">
+ <span class="dropdown-text">Nbdev Automation</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ROS2_docs/">
+ <span class="dropdown-text">ROS 2</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-business" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Business</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-business">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Business_doc/">
+ <span class="dropdown-text">Business Doc</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Philosophy_doc/">
+ <span class="dropdown-text">Ideas Doc</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Finances/">
+ <span class="dropdown-text">Finances</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Other/">
+ <span class="dropdown-text">Other</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="https://bthek1.github.io/bthek1_blog/"> 
+<span class="menu-text">Blog</span></a>
+  </li>  
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-help" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Help</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-help">    
+        <li>
+    <a class="dropdown-item" href="https://github.com/bthek1/bthek1_blog/issues"><i class="bi bi-bug" role="img">
+</i> 
+ <span class="dropdown-text">Report a Bug</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://github.com/bthek1/bthek1_blog/issues"><i class="bi bi-chat-right-text" role="img">
+</i> 
+ <span class="dropdown-text">Ask a Question</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://github.com/bthek1/bthek1_blog/issues"><i class="bi bi-question-circle" role="img">
+</i> 
+ <span class="dropdown-text">FAQ</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools tools-wide">
+    <a href="https://github.com/bthek1" title="" class="quarto-navigation-tool px-1" aria-label="Github"><i class="bi bi-github"></i></a>
+    <a href="https://www.linkedin.com/in/benedict-thekkel/" title="" class="quarto-navigation-tool px-1" aria-label="Linkedin"><i class="bi bi-linkedin"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../Databases/sql.html">Databases</a></li><li class="breadcrumb-item"><a href="../Databases/database_scaling.html">Database Scaling</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Back End</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../influx.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Influx</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../mqtt.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">MQTT</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../rest_api_standard.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">REST API Standard</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Databases</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/sql.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SQL</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/database_scaling.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Database Scaling</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/mysql_&amp;_mariadb.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">MariaDB and MySQL</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/sqlite.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SQLite</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/redis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Redis</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/duckdb.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DuckDB</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">PostgreSQL</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/PostgreSQL/postgresql.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PostgreSQL Overview</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/PostgreSQL/postgresql_setup.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PostgreSQL Setup</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/PostgreSQL/pqsl_extensions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PostgreSQL Extensions</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Databases/PostgreSQL/timescaledb.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimescaleDB</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Django</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_stack.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Django Stack</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_models_design.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model Design</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_save_objects.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Saving objects in Django</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/2_jsonfield.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">JSONField</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_authentication.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Authentication</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_security.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Security</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_permissions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Permissions</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_permission_rules.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Permission Rules</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/2_permission _types.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Permission Types</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_users.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">User Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_allauth_users.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Allauth Users Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/serialization.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Serialization</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/views.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Views</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_admin.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Admin</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_admin_unfold.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Admin Unfold</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_custom_commands.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom Commands</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_django_commands.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Djando and Django-extension Commands</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/filters.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Filters</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pytesting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/secrets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Secrets</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_forms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forms</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_crispy_forms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Crispy Forms</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_q.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">django_q</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/celery.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Celery</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/0_query_filters.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Query Filters</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_querysets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QuerySet</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/2_query_maths.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Query Math</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/managers_and_querysets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Managers and QuerySets</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/drf_spectacular.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DRF Spectacular</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/nested_routers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nested Routers</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/npm_in_django.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">npm in Django</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/backups.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Back ups</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_mail.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Mail Configuration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/import_export.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Import Export</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/validators.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Validator</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/pdf.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PDF Generation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/channels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Channels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/migrations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Migrations</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/indexing_and_caching.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Indexing and Caching</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/datatables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datatable Serverside Processing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_constance.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Django Constance</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_templates.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Django Templates</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_basics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Django Basics</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/django_x.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DjangoX</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/1_drf_basic.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DRF Basic</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/2_drf_quickstart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DRF Quickstart</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/3_drf_tutorial.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DRF Tutorial</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Django/rm_django_setup.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Django For Recovery Metrics</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#measure-before-scaling" id="toc-measure-before-scaling" class="nav-link active" data-scroll-target="#measure-before-scaling">Measure Before Scaling</a></li>
+  <li><a href="#query-and-index-optimisation" id="toc-query-and-index-optimisation" class="nav-link" data-scroll-target="#query-and-index-optimisation">Query and Index Optimisation</a></li>
+  <li><a href="#connection-pooling" id="toc-connection-pooling" class="nav-link" data-scroll-target="#connection-pooling">Connection Pooling</a></li>
+  <li><a href="#vertical-scaling" id="toc-vertical-scaling" class="nav-link" data-scroll-target="#vertical-scaling">Vertical Scaling</a></li>
+  <li><a href="#caching" id="toc-caching" class="nav-link" data-scroll-target="#caching">Caching</a></li>
+  <li><a href="#read-replicas" id="toc-read-replicas" class="nav-link" data-scroll-target="#read-replicas">Read Replicas</a>
+  <ul class="collapse">
+  <li><a href="#how-replication-works" id="toc-how-replication-works" class="nav-link" data-scroll-target="#how-replication-works">How replication works</a></li>
+  <li><a href="#synchronous-versus-asynchronous" id="toc-synchronous-versus-asynchronous" class="nav-link" data-scroll-target="#synchronous-versus-asynchronous">Synchronous versus asynchronous</a></li>
+  <li><a href="#setting-up-a-postgresql-streaming-replica" id="toc-setting-up-a-postgresql-streaming-replica" class="nav-link" data-scroll-target="#setting-up-a-postgresql-streaming-replica">Setting up a PostgreSQL streaming replica</a></li>
+  <li><a href="#what-replicas-do-not-do" id="toc-what-replicas-do-not-do" class="nav-link" data-scroll-target="#what-replicas-do-not-do">What replicas do not do</a></li>
+  <li><a href="#routing-reads-in-django" id="toc-routing-reads-in-django" class="nav-link" data-scroll-target="#routing-reads-in-django">Routing reads in Django</a></li>
+  </ul></li>
+  <li><a href="#replication-lag" id="toc-replication-lag" class="nav-link" data-scroll-target="#replication-lag">Replication Lag</a></li>
+  <li><a href="#high-availability-and-failover" id="toc-high-availability-and-failover" class="nav-link" data-scroll-target="#high-availability-and-failover">High Availability and Failover</a></li>
+  <li><a href="#partitioning" id="toc-partitioning" class="nav-link" data-scroll-target="#partitioning">Partitioning</a></li>
+  <li><a href="#sharding" id="toc-sharding" class="nav-link" data-scroll-target="#sharding">Sharding</a>
+  <ul class="collapse">
+  <li><a href="#choosing-the-shard-key" id="toc-choosing-the-shard-key" class="nav-link" data-scroll-target="#choosing-the-shard-key">Choosing the shard key</a></li>
+  <li><a href="#strategies" id="toc-strategies" class="nav-link" data-scroll-target="#strategies">Strategies</a></li>
+  <li><a href="#what-sharding-breaks" id="toc-what-sharding-breaks" class="nav-link" data-scroll-target="#what-sharding-breaks">What sharding breaks</a></li>
+  <li><a href="#why-consistent-hashing" id="toc-why-consistent-hashing" class="nav-link" data-scroll-target="#why-consistent-hashing">Why consistent hashing</a></li>
+  </ul></li>
+  <li><a href="#consistency-and-cap" id="toc-consistency-and-cap" class="nav-link" data-scroll-target="#consistency-and-cap">Consistency and CAP</a></li>
+  <li><a href="#distributed-sql-and-nosql" id="toc-distributed-sql-and-nosql" class="nav-link" data-scroll-target="#distributed-sql-and-nosql">Distributed SQL and NoSQL</a></li>
+  <li><a href="#architectural-patterns" id="toc-architectural-patterns" class="nav-link" data-scroll-target="#architectural-patterns">Architectural Patterns</a></li>
+  <li><a href="#multi-region" id="toc-multi-region" class="nav-link" data-scroll-target="#multi-region">Multi-Region</a></li>
+  <li><a href="#operations-at-scale" id="toc-operations-at-scale" class="nav-link" data-scroll-target="#operations-at-scale">Operations at Scale</a></li>
+  <li><a href="#decision-guide" id="toc-decision-guide" class="nav-link" data-scroll-target="#decision-guide">Decision Guide</a></li>
+  <li><a href="#further-reading" id="toc-further-reading" class="nav-link" data-scroll-target="#further-reading">Further Reading</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.dev/bthek1/Back_End/blob/main/Databases/01_Database_Scaling.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/Back_End/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../Databases/sql.html">Databases</a></li><li class="breadcrumb-item"><a href="../Databases/database_scaling.html">Database Scaling</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Database Scaling</h1>
+</div>
+
+<div>
+  <div class="description">
+    How a database grows past one machine: query tuning, connection pooling, caching, read replicas, partitioning, sharding, and the distributed systems that do it for you.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Benedict Thekkel </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<p>Scaling a database means keeping latency and throughput acceptable as data volume, request rate, and concurrency grow. There are two directions:</p>
+<ul>
+<li><strong>Vertical (scale up):</strong> a bigger machine. Simple, no code changes, but it has a ceiling and stays a single point of failure.</li>
+<li><strong>Horizontal (scale out):</strong> more machines. No hard ceiling, but every step adds consistency and operational problems.</li>
+</ul>
+<p>The techniques form a ladder. Each rung is cheaper and simpler than the one above it, so climb only when the rung below is exhausted.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Rung</th>
+<th>Technique</th>
+<th>Scales</th>
+<th>Cost in complexity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Query and index optimisation</td>
+<td>Everything</td>
+<td>Very low</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Connection pooling</td>
+<td>Concurrency</td>
+<td>Low</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Vertical scaling</td>
+<td>Everything, up to a ceiling</td>
+<td>Low (money only)</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Caching</td>
+<td>Reads</td>
+<td>Medium (invalidation)</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Read replicas</td>
+<td>Reads</td>
+<td>Medium (replication lag)</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Partitioning</td>
+<td>Large tables</td>
+<td>Medium</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Functional split</td>
+<td>Writes, by domain</td>
+<td>Medium to high</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Sharding</td>
+<td>Writes and storage</td>
+<td>Very high</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Distributed SQL or NoSQL</td>
+<td>Writes and storage</td>
+<td>High (new system to learn)</td>
+</tr>
+</tbody>
+</table>
+<p>The most common mistake is jumping to rung 8 when the problem is on rung 1.</p>
+<hr>
+<section id="measure-before-scaling" class="level2">
+<h2 class="anchored" data-anchor-id="measure-before-scaling">Measure Before Scaling</h2>
+<p>Find out which resource is actually running out. Each symptom points at a different rung.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Symptom</th>
+<th>Likely limit</th>
+<th>Rung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>High CPU, a few slow queries dominate</td>
+<td>Missing indexes, bad query plans</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td><code>FATAL: sorry, too many clients already</code></td>
+<td>Connection count, not data</td>
+<td>2</td>
+</tr>
+<tr class="odd">
+<td>Low buffer cache hit ratio, high disk reads</td>
+<td>Working set no longer fits in RAM</td>
+<td>3, 6</td>
+</tr>
+<tr class="even">
+<td>Same rows read over and over</td>
+<td>Repeated reads</td>
+<td>4, 5</td>
+</tr>
+<tr class="odd">
+<td>Primary CPU saturated by reads</td>
+<td>Read volume</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td>Lock waits, deadlocks on a few rows</td>
+<td>Write contention</td>
+<td>Schema or app design</td>
+</tr>
+<tr class="odd">
+<td>Primary saturated by writes, replicas lagging</td>
+<td>Write throughput</td>
+<td>7, 8, 9</td>
+</tr>
+<tr class="even">
+<td>One table is hundreds of GB, vacuum never finishes</td>
+<td>Table size</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<p>Useful tools in PostgreSQL:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Which queries consume the most total time (needs the pg_stat_statements extension)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="kw">query</span>, calls, <span class="fu">round</span>(total_exec_time) <span class="kw">AS</span> total_ms, <span class="fu">round</span>(mean_exec_time, <span class="dv">2</span>) <span class="kw">AS</span> mean_ms</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> pg_stat_statements</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> total_exec_time <span class="kw">DESC</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">LIMIT</span> <span class="dv">10</span>;</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Buffer cache hit ratio; below about 0.99 on an OLTP database means RAM pressure</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="fu">sum</span>(blks_hit):<span class="ch">:float</span> <span class="op">/</span> <span class="fu">nullif</span>(<span class="fu">sum</span>(blks_hit) <span class="op">+</span> <span class="fu">sum</span>(blks_read), <span class="dv">0</span>) <span class="kw">AS</span> hit_ratio</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> pg_stat_database;</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">-- Current connections by state</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> state, <span class="fu">count</span>(<span class="op">*</span>) <span class="kw">FROM</span> pg_stat_activity <span class="kw">GROUP</span> <span class="kw">BY</span> state;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Look at p95 and p99 latency, not the average. An average hides the slow tail that users actually notice.</p>
+<hr>
+</section>
+<section id="query-and-index-optimisation" class="level2">
+<h2 class="anchored" data-anchor-id="query-and-index-optimisation">Query and Index Optimisation</h2>
+<p>Often a 10x to 100x improvement for no infrastructure change at all.</p>
+<ul>
+<li><strong>Read the plan.</strong> <code>EXPLAIN (ANALYZE, BUFFERS) SELECT ...</code> shows whether the database is doing a sequential scan over millions of rows to return ten.</li>
+<li><strong>Index for the real query patterns.</strong>
+<ul>
+<li>Composite indexes in the order of the filter: equality columns first, then range columns.</li>
+<li>Covering indexes (<code>INCLUDE (...)</code>) so the query is answered from the index alone.</li>
+<li>Partial indexes (<code>WHERE status = 'active'</code>) when only a small subset is queried.</li>
+<li>Every index slows writes and uses RAM, so drop unused ones (<code>pg_stat_user_indexes.idx_scan = 0</code>).</li>
+</ul></li>
+<li><strong>Kill N+1 queries.</strong> In Django that means <code>select_related</code> and <code>prefetch_related</code>.</li>
+<li><strong>Paginate by key, not by offset.</strong> <code>OFFSET 100000</code> still reads and throws away 100000 rows.</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Slow: cost grows with the page number</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> orders <span class="kw">ORDER</span> <span class="kw">BY</span> <span class="kw">id</span> <span class="kw">LIMIT</span> <span class="dv">50</span> OFFSET <span class="dv">100000</span>;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Fast: keyset pagination, constant cost</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> orders <span class="kw">WHERE</span> <span class="kw">id</span> <span class="op">&gt;</span> <span class="ch">:last_seen_id</span> <span class="kw">ORDER</span> <span class="kw">BY</span> <span class="kw">id</span> <span class="kw">LIMIT</span> <span class="dv">50</span>;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul>
+<li><strong>Batch writes.</strong> One <code>INSERT</code> of 1000 rows (or <code>COPY</code>) instead of 1000 round trips and 1000 commits.</li>
+<li><strong>Select only the columns you need</strong>, especially when wide <code>JSONB</code> or <code>TEXT</code> columns are involved.</li>
+</ul>
+<hr>
+</section>
+<section id="connection-pooling" class="level2">
+<h2 class="anchored" data-anchor-id="connection-pooling">Connection Pooling</h2>
+<p>PostgreSQL forks one OS process per connection, and each costs several MB of RAM plus scheduling overhead. Throughput peaks at a fairly small number of active connections (roughly 2 to 4 per CPU core) and then falls as they fight over CPU and locks. A web tier with 20 instances of 50 threads each wants 1000 connections, which a database handles badly.</p>
+<p>A pooler sits between the application and the database and multiplexes many client connections onto a few server connections.</p>
+<pre><code>  app instances (1000 client connections)
+        |  |  |  |  |
+        v  v  v  v  v
+    +----------------+
+    |   PgBouncer    |   pool_mode = transaction
+    +----------------+
+        |  |  |
+        v  v  v        (40 server connections)
+    +----------------+
+    |   PostgreSQL   |
+    +----------------+</code></pre>
+<p>Pool modes in PgBouncer:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Mode</th>
+<th>A server connection is held for</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>session</code></td>
+<td>The whole client session</td>
+<td>Safe for everything, but little multiplexing</td>
+</tr>
+<tr class="even">
+<td><code>transaction</code></td>
+<td>One transaction</td>
+<td>The usual choice. Session state (<code>SET</code>, advisory locks, <code>LISTEN</code>) does not survive between transactions</td>
+</tr>
+<tr class="odd">
+<td><code>statement</code></td>
+<td>One statement</td>
+<td>Multi-statement transactions are not allowed</td>
+</tr>
+</tbody>
+</table>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">; pgbouncer.ini</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">[databases]</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="dt">app </span><span class="ot">=</span><span class="st"> host=10.0.0.10 port=5432 dbname=app</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">[pgbouncer]</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="dt">listen_port </span><span class="ot">=</span><span class="st"> </span><span class="dv">6432</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="dt">pool_mode </span><span class="ot">=</span><span class="st"> transaction</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="dt">max_client_conn </span><span class="ot">=</span><span class="st"> </span><span class="dv">2000</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="dt">default_pool_size </span><span class="ot">=</span><span class="st"> </span><span class="dv">40</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Managed alternatives: RDS Proxy, Supabase Supavisor, ProxySQL for MySQL. In Django, behind a transaction pooler, set <code>CONN_MAX_AGE = 0</code> (or use the pooler and Django’s own persistent connections carefully) and disable server-side cursors with <code>DISABLE_SERVER_SIDE_CURSORS = True</code>, because those cursors span transactions.</p>
+<hr>
+</section>
+<section id="vertical-scaling" class="level2">
+<h2 class="anchored" data-anchor-id="vertical-scaling">Vertical Scaling</h2>
+<p>Move to a bigger machine: more RAM so the working set fits in memory, faster NVMe for I/O, more cores for concurrency.</p>
+<p>It is underrated. A single modern server with hundreds of GB of RAM and 64 or more cores runs workloads far beyond what most applications will ever reach, and it costs no engineering time. The limits:</p>
+<ul>
+<li>Cost rises steeply at the top end.</li>
+<li>There is a hard ceiling.</li>
+<li>It is still one machine, so it does nothing for availability (that is what replicas are for).</li>
+<li>Resizing often needs a restart or failover.</li>
+</ul>
+<p>Check the configuration before buying hardware. Defaults are conservative: in PostgreSQL, <code>shared_buffers</code> (about 25% of RAM), <code>effective_cache_size</code> (about 75%), <code>work_mem</code>, and <code>max_wal_size</code> are the usual first tuning targets.</p>
+<hr>
+</section>
+<section id="caching" class="level2">
+<h2 class="anchored" data-anchor-id="caching">Caching</h2>
+<p>The fastest query is the one that never reaches the database. A cache (Redis or Memcached) in front of read-heavy data absorbs repeated reads.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Pattern</th>
+<th>How it works</th>
+<th>Trade-off</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Cache-aside (lazy loading)</td>
+<td>Read the cache; on a miss read the DB and fill the cache</td>
+<td>Most common. First read after expiry is slow</td>
+</tr>
+<tr class="even">
+<td>Read-through</td>
+<td>The cache layer itself loads from the DB on a miss</td>
+<td>Same as above, logic lives in the cache layer</td>
+</tr>
+<tr class="odd">
+<td>Write-through</td>
+<td>Every write goes to the cache and the DB together</td>
+<td>Cache always fresh, writes slower</td>
+</tr>
+<tr class="even">
+<td>Write-behind</td>
+<td>Write to the cache now, flush to the DB later</td>
+<td>Fast writes, but data is lost if the cache dies</td>
+</tr>
+</tbody>
+</table>
+<pre><code>read:   app --&gt; cache --hit--&gt; return
+                  |
+                 miss
+                  v
+                  DB --&gt; store in cache with TTL --&gt; return
+
+write:  app --&gt; DB --&gt; delete cache key</code></pre>
+<p>The hard parts:</p>
+<ul>
+<li><strong>Invalidation.</strong> Use a TTL as a safety net and delete the key on write. Deleting is safer than updating, because two concurrent updates can leave the cache holding the older value.</li>
+<li><strong>Cache stampede.</strong> A hot key expires and a thousand requests miss at once and all hit the database. Fixes: a lock so only one request rebuilds the value, request coalescing, or refreshing slightly before expiry with some randomness.</li>
+<li><strong>Stale reads</strong> are a feature you are choosing. Decide per piece of data how stale is acceptable.</li>
+</ul>
+<p>Other cache layers worth knowing: materialised views inside the database, HTTP caching and CDNs for API responses, and per-request memoisation in the application.</p>
+<hr>
+<div id="7885fca5" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cache-aside with Django's cache framework (backed by Redis)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> django.core.cache <span class="im">import</span> cache</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_product(product_id: <span class="bu">int</span>):</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    key <span class="op">=</span> <span class="ss">f"product:</span><span class="sc">{</span>product_id<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    product <span class="op">=</span> cache.get(key)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> product <span class="kw">is</span> <span class="va">None</span>:</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>        product <span class="op">=</span> Product.objects.get(pk<span class="op">=</span>product_id)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>        cache.<span class="bu">set</span>(key, product, timeout<span class="op">=</span><span class="dv">300</span>)  <span class="co"># TTL as a safety net</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> product</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> update_product(product_id: <span class="bu">int</span>, <span class="op">**</span>fields):</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    Product.objects.<span class="bu">filter</span>(pk<span class="op">=</span>product_id).update(<span class="op">**</span>fields)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    cache.delete(<span class="ss">f"product:</span><span class="sc">{</span>product_id<span class="sc">}</span><span class="ss">"</span>)  <span class="co"># invalidate, do not overwrite</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="read-replicas" class="level2">
+<h2 class="anchored" data-anchor-id="read-replicas">Read Replicas</h2>
+<p>Most applications read far more than they write, often 80 to 95 percent reads. A read replica is a copy of the primary that receives every change and serves read-only queries, so read load spreads across several machines while all writes still go to one primary.</p>
+<pre><code>                    writes + reads that must be fresh
+       app  ------------------------------------------&gt;  PRIMARY
+        |                                                   |
+        |                                         WAL stream (changes)
+        |                                       /           |           \
+        |   reads                              v            v            v
+        +---------------------------------&gt; REPLICA 1    REPLICA 2    REPLICA 3</code></pre>
+<section id="how-replication-works" class="level3">
+<h3 class="anchored" data-anchor-id="how-replication-works">How replication works</h3>
+<p>The primary records every change in a log before applying it: the <strong>write-ahead log (WAL)</strong> in PostgreSQL, the <strong>binlog</strong> in MySQL. Replicas receive that log and replay it.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kind</th>
+<th>What is shipped</th>
+<th>Examples</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Physical (streaming)</td>
+<td>Raw WAL bytes, byte-identical copy</td>
+<td>PostgreSQL streaming replication</td>
+<td>Read replicas, standby for failover</td>
+</tr>
+<tr class="even">
+<td>Logical</td>
+<td>Row changes (insert, update, delete)</td>
+<td>PostgreSQL logical replication, MySQL row-based binlog</td>
+<td>Replicating some tables, cross-version upgrades, feeding other systems</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="synchronous-versus-asynchronous" class="level3">
+<h3 class="anchored" data-anchor-id="synchronous-versus-asynchronous">Synchronous versus asynchronous</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Mode</th>
+<th>Primary commits when</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Asynchronous</td>
+<td>Its own WAL is on disk</td>
+<td>Fast writes, replica outage does not affect primary</td>
+<td>Replicas lag; on failover the last few transactions can be lost</td>
+</tr>
+<tr class="even">
+<td>Synchronous</td>
+<td>At least one replica confirms</td>
+<td>No data loss on failover</td>
+<td>Every write waits a network round trip; a stalled replica stalls writes</td>
+</tr>
+<tr class="odd">
+<td>Semi-sync / quorum</td>
+<td>N of M replicas confirm</td>
+<td>Balance of the two</td>
+<td>Still adds latency</td>
+</tr>
+</tbody>
+</table>
+<p>PostgreSQL controls this with <code>synchronous_commit</code> and <code>synchronous_standby_names</code>. The common production shape is one synchronous standby in the same region for durability plus asynchronous replicas for read scaling.</p>
+</section>
+<section id="setting-up-a-postgresql-streaming-replica" class="level3">
+<h3 class="anchored" data-anchor-id="setting-up-a-postgresql-streaming-replica">Setting up a PostgreSQL streaming replica</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># On the primary (postgresql.conf): wal_level = replica, max_wal_senders = 10</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># and allow the replication user in pg_hba.conf:</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#   host replication replicator 10.0.0.0/24 scram-sha-256</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co"># On the new replica: clone the primary and write the standby config in one step</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="ex">pg_basebackup</span> <span class="at">-h</span> 10.0.0.10 <span class="at">-U</span> replicator <span class="at">-D</span> /var/lib/postgresql/17/main <span class="at">-R</span> <span class="at">-X</span> stream <span class="at">-P</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># -R creates standby.signal and primary_conninfo, then start PostgreSQL as usual</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Managed databases (RDS, Cloud SQL, Azure) reduce this to one button, and Aurora replicas share the same storage, so they lag by milliseconds rather than seconds.</p>
+</section>
+<section id="what-replicas-do-not-do" class="level3">
+<h3 class="anchored" data-anchor-id="what-replicas-do-not-do">What replicas do not do</h3>
+<ul>
+<li>They do <strong>not</strong> scale writes. Every replica replays every write.</li>
+<li>They do <strong>not</strong> reduce storage per node. Every replica holds the full dataset.</li>
+<li>They are <strong>not</strong> backups. A <code>DROP TABLE</code> replicates instantly.</li>
+</ul>
+<hr>
+</section>
+<section id="routing-reads-in-django" class="level3">
+<h3 class="anchored" data-anchor-id="routing-reads-in-django">Routing reads in Django</h3>
+<p>Django supports several databases and a <strong>database router</strong> that decides which alias a query uses.</p>
+<div id="30530f55" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># settings.py</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>DATABASES <span class="op">=</span> {</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"default"</span>: {<span class="st">"ENGINE"</span>: <span class="st">"django.db.backends.postgresql"</span>, <span class="st">"HOST"</span>: <span class="st">"primary.db.internal"</span>, <span class="st">"NAME"</span>: <span class="st">"app"</span>},</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"replica1"</span>: {<span class="st">"ENGINE"</span>: <span class="st">"django.db.backends.postgresql"</span>, <span class="st">"HOST"</span>: <span class="st">"replica1.db.internal"</span>, <span class="st">"NAME"</span>: <span class="st">"app"</span>},</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"replica2"</span>: {<span class="st">"ENGINE"</span>: <span class="st">"django.db.backends.postgresql"</span>, <span class="st">"HOST"</span>: <span class="st">"replica2.db.internal"</span>, <span class="st">"NAME"</span>: <span class="st">"app"</span>},</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>DATABASE_ROUTERS <span class="op">=</span> [<span class="st">"core.routers.PrimaryReplicaRouter"</span>]</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="co"># For tests, mark replicas as mirrors so they share the test database:</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="co"># DATABASES["replica1"]["TEST"] = {"MIRROR": "default"}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="26912ec5" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># core/routers.py</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> random</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> PrimaryReplicaRouter:</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    replicas <span class="op">=</span> [<span class="st">"replica1"</span>, <span class="st">"replica2"</span>]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> db_for_read(<span class="va">self</span>, model, <span class="op">**</span>hints):</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> random.choice(<span class="va">self</span>.replicas)</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> db_for_write(<span class="va">self</span>, model, <span class="op">**</span>hints):</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"default"</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> allow_relation(<span class="va">self</span>, obj1, obj2, <span class="op">**</span>hints):</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">True</span>  <span class="co"># all aliases hold the same data</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> allow_migrate(<span class="va">self</span>, db, app_label, model_name<span class="op">=</span><span class="va">None</span>, <span class="op">**</span>hints):</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> db <span class="op">==</span> <span class="st">"default"</span>  <span class="co"># replicas get schema changes through replication</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Force a specific query to the primary with <code>.using("default")</code>, for example <code>Order.objects.using("default").get(pk=pk)</code>. Reads inside <code>transaction.atomic()</code> are worth sending to the primary too, because a transaction that mixes primary writes with replica reads sees an inconsistent picture.</p>
+<hr>
+</section>
+</section>
+<section id="replication-lag" class="level2">
+<h2 class="anchored" data-anchor-id="replication-lag">Replication Lag</h2>
+<p>With asynchronous replication a replica is always slightly behind, usually milliseconds, but seconds or minutes under heavy write load, long-running queries on the replica, or network trouble. The classic bug:</p>
+<pre><code>1. User updates their profile      -&gt; write goes to PRIMARY
+2. Page redirects and reloads      -&gt; read goes to REPLICA (still 200 ms behind)
+3. User sees the OLD profile       -&gt; "my save did not work", saves again</code></pre>
+<p>Anomalies caused by lag, and their fixes:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Anomaly</th>
+<th>Example</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Read-your-writes violated</td>
+<td>Edit, reload, see the old value</td>
+<td>Route that user’s reads to the primary for a few seconds after a write</td>
+</tr>
+<tr class="even">
+<td>Monotonic reads violated</td>
+<td>Refresh twice, a comment appears then disappears (two replicas with different lag)</td>
+<td>Pin a user or session to one replica</td>
+</tr>
+<tr class="odd">
+<td>Causal order violated</td>
+<td>A reply is visible before the question it answers</td>
+<td>Read related data from the same node, or from the primary</td>
+</tr>
+</tbody>
+</table>
+<p>Strategies, from simplest to most precise:</p>
+<ol type="1">
+<li><strong>Primary for critical paths.</strong> Anything the user just changed, or anything involving money, reads the primary.</li>
+<li><strong>Sticky primary after write.</strong> After a write, set a short flag (cookie, session, or cache key) and send that user’s reads to the primary until it expires.</li>
+<li><strong>Wait for position.</strong> Record the primary’s WAL position (LSN) after the write, and only read from a replica that has replayed past it.</li>
+<li><strong>Lag-aware routing.</strong> Take a replica out of the read pool when its lag exceeds a threshold.</li>
+</ol>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- On a replica: how far behind is it, in time?</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> now() <span class="op">-</span> pg_last_xact_replay_timestamp() <span class="kw">AS</span> replication_delay;</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- On the primary: per-replica lag in bytes and time</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> client_addr, state, sync_state,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>       pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) <span class="kw">AS</span> bytes_behind,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>       replay_lag</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> pg_stat_replication;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Note that <code>pg_last_xact_replay_timestamp()</code> stops advancing when the primary is idle, so a quiet system can look lagged. Compare LSNs when precision matters.</p>
+<div id="aab5cb02" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># A sticky-after-write router: reads go to the primary for a few seconds after this</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># request (or user) wrote. A middleware sets the flag in a contextvar from a cookie.</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> contextvars, random</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>recently_wrote <span class="op">=</span> contextvars.ContextVar(<span class="st">"recently_wrote"</span>, default<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> StickyPrimaryRouter:</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    replicas <span class="op">=</span> [<span class="st">"replica1"</span>, <span class="st">"replica2"</span>]</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> db_for_read(<span class="va">self</span>, model, <span class="op">**</span>hints):</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> recently_wrote.get():</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="st">"default"</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> random.choice(<span class="va">self</span>.replicas)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> db_for_write(<span class="va">self</span>, model, <span class="op">**</span>hints):</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        recently_wrote.<span class="bu">set</span>(<span class="va">True</span>)  <span class="co"># middleware also sets a short-lived cookie on the response</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"default"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<hr>
+</section>
+<section id="high-availability-and-failover" class="level2">
+<h2 class="anchored" data-anchor-id="high-availability-and-failover">High Availability and Failover</h2>
+<p>A replica is also the standby that takes over when the primary dies. Failover means: detect the failure, pick the most up-to-date replica, promote it to primary, repoint the other replicas, and move clients to it.</p>
+<ul>
+<li><strong>Automate it.</strong> Patroni (with etcd or Consul) is the standard for self-hosted PostgreSQL; managed services (RDS Multi-AZ, Cloud SQL HA) do it for you, typically in 30 to 120 seconds.</li>
+<li><strong>Split brain</strong> is the danger: two nodes both believe they are primary and both accept writes, and the histories diverge. Prevent it with a consensus store that grants leadership to one node at a time, and by fencing the old primary (shutting it off) before promoting.</li>
+<li><strong>Clients need a stable address</strong>: a virtual IP, a DNS name the failover tool updates, or a proxy (HAProxy, PgBouncer) that follows the leader.</li>
+<li><strong>RPO and RTO.</strong> Recovery point objective is how much data you can lose (zero needs synchronous replication). Recovery time objective is how long you can be down.</li>
+<li><strong>Practise it.</strong> A failover that has never been triggered on purpose will surprise you when it happens for real.</li>
+</ul>
+<hr>
+</section>
+<section id="partitioning" class="level2">
+<h2 class="anchored" data-anchor-id="partitioning">Partitioning</h2>
+<p>Partitioning splits one large table into smaller physical tables <strong>on the same server</strong>, while queries still see one logical table.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Split by</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Range</td>
+<td>Value ranges, usually time</td>
+<td>Events, logs, metrics, orders by month</td>
+</tr>
+<tr class="even">
+<td>List</td>
+<td>Explicit values</td>
+<td>Region, tenant tier</td>
+</tr>
+<tr class="odd">
+<td>Hash</td>
+<td>Hash of a key</td>
+<td>Even spread when there is no natural range</td>
+</tr>
+</tbody>
+</table>
+<p>Benefits:</p>
+<ul>
+<li><strong>Partition pruning:</strong> a query with <code>WHERE created_at &gt;= '2026-10-01'</code> only touches the matching partitions.</li>
+<li><strong>Smaller indexes</strong> that fit in memory.</li>
+<li><strong>Cheap data retention:</strong> dropping a month is <code>DROP TABLE events_2025_01</code>, instant, instead of a huge <code>DELETE</code> that bloats the table and hammers vacuum.</li>
+<li>Maintenance (vacuum, reindex) runs per partition.</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> <span class="kw">events</span> (</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>         bigint <span class="kw">GENERATED</span> ALWAYS <span class="kw">AS</span> IDENTITY,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    created_at timestamptz <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    user_id    bigint <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    payload    jsonb,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">PRIMARY</span> <span class="kw">KEY</span> (<span class="kw">id</span>, created_at)          <span class="co">-- the partition key must be in the primary key</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>) <span class="kw">PARTITION</span> <span class="kw">BY</span> <span class="kw">RANGE</span> (created_at);</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> events_2026_10 <span class="kw">PARTITION</span> <span class="kw">OF</span> <span class="kw">events</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">FOR</span> <span class="kw">VALUES</span> <span class="kw">FROM</span> (<span class="st">'2026-10-01'</span>) <span class="kw">TO</span> (<span class="st">'2026-11-01'</span>);</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> events_2026_11 <span class="kw">PARTITION</span> <span class="kw">OF</span> <span class="kw">events</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">FOR</span> <span class="kw">VALUES</span> <span class="kw">FROM</span> (<span class="st">'2026-11-01'</span>) <span class="kw">TO</span> (<span class="st">'2026-12-01'</span>);</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="co">-- Retention: detach and drop old months</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="kw">ALTER</span> <span class="kw">TABLE</span> <span class="kw">events</span> DETACH <span class="kw">PARTITION</span> events_2025_10;</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="kw">DROP</span> <span class="kw">TABLE</span> events_2025_10;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Use <code>pg_partman</code> to create future partitions automatically, or TimescaleDB, which does time partitioning (hypertables) and compression for you. Queries that do not filter on the partition key scan every partition, so choose the key from the dominant access pattern.</p>
+<p>Partitioning splits a table; sharding (below) splits the <strong>data across servers</strong>. Partitioning is sometimes called horizontal partitioning, and sharding is horizontal partitioning across machines.</p>
+<hr>
+</section>
+<section id="sharding" class="level2">
+<h2 class="anchored" data-anchor-id="sharding">Sharding</h2>
+<p>Sharding splits the data across several independent database servers. Each shard holds a subset of the rows and handles the reads <strong>and writes</strong> for that subset. It is the only way to scale write throughput and storage past a single primary, and the most expensive step in complexity.</p>
+<pre><code>                       app + shard router
+                 (shard = f(tenant_id))
+             /            |              \
+            v             v               v
+       SHARD A         SHARD B          SHARD C
+     tenants 1-..    tenants ..-..    tenants ..-..
+     primary+replicas primary+replicas primary+replicas</code></pre>
+<p>Each shard is usually itself a primary with replicas, so sharding and replication combine.</p>
+<section id="choosing-the-shard-key" class="level3">
+<h3 class="anchored" data-anchor-id="choosing-the-shard-key">Choosing the shard key</h3>
+<p>The most important decision, and very hard to change later. A good key:</p>
+<ul>
+<li>Has <strong>high cardinality</strong> and spreads load evenly.</li>
+<li><strong>Matches the access pattern</strong>, so most queries hit exactly one shard. <code>tenant_id</code> for multi-tenant SaaS and <code>user_id</code> for consumer apps are the classic choices.</li>
+<li>Keeps data that is used together on the same shard (a tenant’s users, orders, and invoices).</li>
+</ul>
+<p>Bad keys: a timestamp (all current writes land on the newest shard), a low-cardinality field such as country, or anything where one value is enormous (a single giant customer becomes a hot shard).</p>
+</section>
+<section id="strategies" class="level3">
+<h3 class="anchored" data-anchor-id="strategies">Strategies</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Strategy</th>
+<th>Routing</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Range</td>
+<td>Key ranges map to shards</td>
+<td>Range scans stay on one shard</td>
+<td>Hot spots; uneven growth</td>
+</tr>
+<tr class="even">
+<td>Hash modulo</td>
+<td><code>hash(key) % N</code></td>
+<td>Even spread</td>
+<td>Changing N moves almost every key</td>
+</tr>
+<tr class="odd">
+<td>Consistent hashing</td>
+<td>Hash ring with virtual nodes</td>
+<td>Adding a node moves only about 1/N of the keys</td>
+<td>No efficient range queries</td>
+</tr>
+<tr class="even">
+<td>Directory</td>
+<td>A lookup table maps key to shard</td>
+<td>Total flexibility, can move one tenant at a time</td>
+<td>Lookup service is a dependency to keep fast and available</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="what-sharding-breaks" class="level3">
+<h3 class="anchored" data-anchor-id="what-sharding-breaks">What sharding breaks</h3>
+<ul>
+<li><strong>Cross-shard queries</strong> become scatter-gather: send to every shard, merge the results. Latency is set by the slowest shard.</li>
+<li><strong>Cross-shard joins</strong> move into the application, or are avoided by co-locating related data and duplicating small reference tables on every shard.</li>
+<li><strong>Cross-shard transactions</strong> need two-phase commit (slow, blocks on failures) or sagas (a sequence of local transactions with compensating actions, eventually consistent).</li>
+<li><strong>Auto-increment IDs</strong> collide. Use globally unique, time-ordered IDs: UUIDv7, ULID, or Snowflake-style 64-bit IDs (timestamp + machine + sequence), which stay friendly to B-tree indexes unlike random UUIDv4.</li>
+<li><strong>Unique constraints</strong> only hold within a shard unless the unique column is the shard key.</li>
+<li><strong>Rebalancing</strong> live data needs double writes, backfill, verification, and a cutover.</li>
+<li><strong>Operations multiply</strong>: N sets of backups, migrations, monitoring, and failovers.</li>
+</ul>
+<p>Tools that take on much of this: <strong>Vitess</strong> for MySQL (YouTube, Slack, GitHub), <strong>Citus</strong> for PostgreSQL (distributed tables plus reference tables), and the managed versions of each.</p>
+<hr>
+</section>
+<section id="why-consistent-hashing" class="level3">
+<h3 class="anchored" data-anchor-id="why-consistent-hashing">Why consistent hashing</h3>
+<p>With <code>hash(key) % N</code>, going from 4 to 5 shards changes the shard for roughly 80 percent of keys, so almost all data has to move. Consistent hashing places shards and keys on the same ring and gives each key to the next shard clockwise, so adding a shard only takes keys from its neighbours. The cell below measures both.</p>
+<div id="c0178b4f" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> bisect, hashlib</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> h(s: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">int</span>:</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">int</span>(hashlib.md5(s.encode()).hexdigest(), <span class="dv">16</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Ring:</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, nodes, vnodes<span class="op">=</span><span class="dv">100</span>):</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.ring <span class="op">=</span> <span class="bu">sorted</span>((h(<span class="ss">f"</span><span class="sc">{</span>n<span class="sc">}</span><span class="ss">#</span><span class="sc">{</span>i<span class="sc">}</span><span class="ss">"</span>), n) <span class="cf">for</span> n <span class="kw">in</span> nodes <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(vnodes))</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.keys <span class="op">=</span> [k <span class="cf">for</span> k, _ <span class="kw">in</span> <span class="va">self</span>.ring]</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> node(<span class="va">self</span>, key: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>        i <span class="op">=</span> bisect.bisect(<span class="va">self</span>.keys, h(key)) <span class="op">%</span> <span class="bu">len</span>(<span class="va">self</span>.ring)</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.ring[i][<span class="dv">1</span>]</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>keys <span class="op">=</span> [<span class="ss">f"user:</span><span class="sc">{</span>i<span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">100_000</span>)]</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>mod_moved <span class="op">=</span> <span class="bu">sum</span>(h(k) <span class="op">%</span> <span class="dv">4</span> <span class="op">!=</span> h(k) <span class="op">%</span> <span class="dv">5</span> <span class="cf">for</span> k <span class="kw">in</span> keys) <span class="op">/</span> <span class="bu">len</span>(keys)</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>before <span class="op">=</span> Ring([<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"d"</span>])</span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>after <span class="op">=</span> Ring([<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"d"</span>, <span class="st">"e"</span>])</span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>ring_moved <span class="op">=</span> <span class="bu">sum</span>(before.node(k) <span class="op">!=</span> after.node(k) <span class="cf">for</span> k <span class="kw">in</span> keys) <span class="op">/</span> <span class="bu">len</span>(keys)</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"hash % N, 4 -&gt; 5 shards: </span><span class="sc">{</span>mod_moved<span class="sc">:.0%}</span><span class="ss"> of keys move"</span>)</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"consistent hashing     : </span><span class="sc">{</span>ring_moved<span class="sc">:.0%}</span><span class="ss"> of keys move (ideal is 1/5 = 20%)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<hr>
+</section>
+</section>
+<section id="consistency-and-cap" class="level2">
+<h2 class="anchored" data-anchor-id="consistency-and-cap">Consistency and CAP</h2>
+<p>Once data lives on more than one machine, you trade consistency against availability and latency.</p>
+<ul>
+<li><strong>CAP:</strong> during a network partition, a system either refuses some requests (consistent, CP) or answers with possibly stale data (available, AP). Partitions are not optional, so the real choice is what to do when one happens.</li>
+<li><strong>PACELC</strong> is the more useful everyday version: if there is a <strong>P</strong>artition choose <strong>A</strong> or <strong>C</strong>, <strong>E</strong>lse choose <strong>L</strong>atency or <strong>C</strong>onsistency. Even with a healthy network, strong consistency costs a round trip to other nodes on every write.</li>
+</ul>
+<p>Consistency models, strongest first:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linearizable</td>
+<td>Every read sees the latest committed write, as if there were one copy</td>
+</tr>
+<tr class="even">
+<td>Sequential</td>
+<td>All nodes see operations in the same order</td>
+</tr>
+<tr class="odd">
+<td>Causal</td>
+<td>Operations that depend on each other are seen in order</td>
+</tr>
+<tr class="even">
+<td>Read-your-writes</td>
+<td>You always see your own writes</td>
+</tr>
+<tr class="odd">
+<td>Eventual</td>
+<td>If writes stop, all replicas eventually agree</td>
+</tr>
+</tbody>
+</table>
+<p>How distributed systems get there:</p>
+<ul>
+<li><strong>Leader-based replication</strong> (PostgreSQL, MySQL): one node orders all writes.</li>
+<li><strong>Consensus</strong> (Raft, Paxos): a majority of replicas must agree before a write commits. This is how CockroachDB, YugabyteDB, TiDB, etcd, and Spanner stay strongly consistent and survive a minority of nodes failing.</li>
+<li><strong>Leaderless quorums</strong> (Cassandra, DynamoDB-style): with N replicas, write to W and read from R. When <code>R + W &gt; N</code>, every read overlaps a node holding the latest write. Tunable per query.</li>
+</ul>
+<hr>
+</section>
+<section id="distributed-sql-and-nosql" class="level2">
+<h2 class="anchored" data-anchor-id="distributed-sql-and-nosql">Distributed SQL and NoSQL</h2>
+<p>Instead of sharding by hand, use a database that shards and replicates internally.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Family</th>
+<th>Examples</th>
+<th>How it scales</th>
+<th>Good for</th>
+<th>Watch out for</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Distributed SQL (NewSQL)</td>
+<td>CockroachDB, YugabyteDB, TiDB, Google Spanner</td>
+<td>Automatic range sharding, Raft per range, distributed transactions</td>
+<td>Strong consistency plus horizontal writes, multi-region</td>
+<td>Higher per-query latency than a single Postgres; cross-range transactions cost round trips</td>
+</tr>
+<tr class="even">
+<td>Cloud-native relational</td>
+<td>Aurora, AlloyDB, Neon</td>
+<td>Compute separated from shared distributed storage</td>
+<td>Fast replicas, fast failover, storage that grows on its own</td>
+<td>Still one writer</td>
+</tr>
+<tr class="odd">
+<td>Key-value / wide-column</td>
+<td>DynamoDB, Cassandra, ScyllaDB</td>
+<td>Hash partitioning, leaderless replication</td>
+<td>Massive write volume, predictable access patterns</td>
+<td>No joins; schema designed around queries</td>
+</tr>
+<tr class="even">
+<td>Document</td>
+<td>MongoDB</td>
+<td>Built-in sharding on a shard key</td>
+<td>Document-shaped data</td>
+<td>Same shard key rules as manual sharding</td>
+</tr>
+<tr class="odd">
+<td>Columnar / OLAP</td>
+<td>ClickHouse, BigQuery, Snowflake, DuckDB</td>
+<td>Columnar storage, massively parallel scans</td>
+<td>Analytics and reporting</td>
+<td>Not for transactional row updates</td>
+</tr>
+<tr class="even">
+<td>Search</td>
+<td>Elasticsearch, OpenSearch</td>
+<td>Sharded inverted indexes</td>
+<td>Full-text search, faceting</td>
+<td>Not a system of record</td>
+</tr>
+</tbody>
+</table>
+<p>Rule of thumb for NoSQL stores like DynamoDB and Cassandra: <strong>you design the tables around the queries, not around the entities.</strong> If the access patterns are not known in advance, a relational database will serve you better.</p>
+<p>Moving analytics off the transactional database is one of the highest-value scaling moves. Heavy reporting queries on the OLTP primary compete with user traffic; ship the data to a columnar store instead.</p>
+<hr>
+</section>
+<section id="architectural-patterns" class="level2">
+<h2 class="anchored" data-anchor-id="architectural-patterns">Architectural Patterns</h2>
+<ul>
+<li><strong>Functional partitioning.</strong> Split by domain: users, orders, and analytics in separate databases, usually along service boundaries. Each scales on its own, and joins across them move to the application.</li>
+<li><strong>CQRS (command query responsibility segregation).</strong> Separate the write model from the read models, and build read-optimised projections (denormalised tables, search indexes, caches) from the writes.</li>
+<li><strong>Change data capture (CDC).</strong> Tools such as Debezium read the WAL or binlog and publish every row change to Kafka. One stream then feeds the search index, cache invalidation, the data warehouse, or a new database during a migration, without the application writing to all of them.</li>
+<li><strong>Transactional outbox.</strong> Writing to the database and then publishing to a queue is a dual write: if the second step fails, they disagree. Instead, insert the event into an <code>outbox</code> table in the <strong>same transaction</strong> as the change, and have a relay (or CDC) publish from that table.</li>
+<li><strong>Queues for write smoothing.</strong> Put bursty, non-urgent writes on a queue (Celery, SQS, Kafka) so the database sees a steady rate instead of spikes.</li>
+<li><strong>Hot and cold tiering.</strong> Keep recent data in the primary and move old data to cheap storage (Parquet on S3, queried with DuckDB or Athena). A smaller hot set means indexes and the working set stay in memory.</li>
+<li><strong>Polyglot persistence.</strong> Each workload in the store suited to it: PostgreSQL for transactions, Redis for sessions and counters, ClickHouse for analytics, OpenSearch for search, all kept in sync through CDC.</li>
+</ul>
+<hr>
+</section>
+<section id="multi-region" class="level2">
+<h2 class="anchored" data-anchor-id="multi-region">Multi-Region</h2>
+<p>Serving users on several continents adds the speed of light to every design decision: a round trip between continents is roughly 70 to 250 ms.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Topology</th>
+<th>Writes</th>
+<th>Reads</th>
+<th>Trade-off</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Single primary, remote replicas</td>
+<td>Go to one region</td>
+<td>Local</td>
+<td>Simple; remote users pay latency on writes and see lag</td>
+</tr>
+<tr class="even">
+<td>Multi-primary (active-active)</td>
+<td>Local in every region</td>
+<td>Local</td>
+<td>Concurrent writes to the same row conflict; resolution by last-write-wins (loses data) or CRDTs (complex)</td>
+</tr>
+<tr class="odd">
+<td>Geo-partitioned</td>
+<td>Local for the row’s home region</td>
+<td>Local</td>
+<td>Each row lives in its user’s region (CockroachDB, Spanner). Also helps with data residency law</td>
+</tr>
+<tr class="even">
+<td>Global consensus</td>
+<td>Majority across regions</td>
+<td>Local, possibly stale, or global for fresh</td>
+<td>Strongly consistent, but every write pays a cross-region round trip</td>
+</tr>
+</tbody>
+</table>
+<p>Most applications do well with a single primary region, a synchronous standby in another zone of the same region, and asynchronous replicas or a CDN in other regions.</p>
+<hr>
+</section>
+<section id="operations-at-scale" class="level2">
+<h2 class="anchored" data-anchor-id="operations-at-scale">Operations at Scale</h2>
+<ul>
+<li><strong>Schema migrations.</strong> <code>ALTER TABLE</code> on a large table can take a lock that blocks traffic. Use online tools (gh-ost or pt-online-schema-change for MySQL, <code>pg_repack</code> and <code>CREATE INDEX CONCURRENTLY</code> for PostgreSQL) and the <strong>expand and contract</strong> pattern: add the new column, write to both, backfill in batches, switch reads, then drop the old column in a later release. Set <code>lock_timeout</code> so a migration gives up rather than queueing behind a long transaction.</li>
+<li><strong>Backups.</strong> Replicas are not backups. Take base backups plus continuous WAL archiving (pgBackRest, WAL-G) for point-in-time recovery, and test the restore regularly.</li>
+<li><strong>Vacuum and bloat (PostgreSQL).</strong> Updates and deletes leave dead rows that autovacuum must clean. High-churn tables need per-table autovacuum tuning, and transaction ID wraparound is a real outage risk that monitoring should watch.</li>
+<li><strong>Long transactions</strong> on a replica can either delay replay (raising lag) or be cancelled (<code>hot_standby_feedback</code> and <code>max_standby_streaming_delay</code> choose which). On the primary they block vacuum.</li>
+<li><strong>Monitoring.</strong> Track p95 and p99 query latency, connections, replication lag, cache hit ratio, disk growth, lock waits, and dead tuples.</li>
+<li><strong>Capacity planning.</strong> Know the growth rate and plan the next rung at about 50 percent of the current ceiling, not at 95 percent.</li>
+<li><strong>Load testing</strong> with production-sized data and real query mixes; a table of 1000 rows tells you nothing about one of 100 million.</li>
+</ul>
+<hr>
+</section>
+<section id="decision-guide" class="level2">
+<h2 class="anchored" data-anchor-id="decision-guide">Decision Guide</h2>
+<p>Work down the list and stop at the first step that solves the problem.</p>
+<ol type="1">
+<li><strong>Slow queries?</strong> <code>EXPLAIN ANALYZE</code>, add or fix indexes, remove N+1 queries, use keyset pagination.</li>
+<li><strong>Too many connections?</strong> Put PgBouncer (or RDS Proxy) in front.</li>
+<li><strong>Generally overloaded?</strong> Tune the configuration, then scale up. Hardware is cheaper than engineering time.</li>
+<li><strong>Same data read repeatedly?</strong> Cache it with a TTL and invalidate on write.</li>
+<li><strong>Read-heavy and still overloaded?</strong> Add read replicas, route reads to them, and handle replication lag for read-your-writes.</li>
+<li><strong>A few very large tables, often time-based?</strong> Partition them and drop old partitions for retention.</li>
+<li><strong>Analytics slowing down user traffic?</strong> Move them to a columnar store fed by CDC.</li>
+<li><strong>Writes or storage beyond one machine?</strong> Split by domain first; then shard on a carefully chosen key, or adopt distributed SQL, DynamoDB, or Cassandra.</li>
+</ol>
+<p>A single well-tuned PostgreSQL primary with a pooler, a cache, and a couple of replicas serves the large majority of applications. Distributing too early swaps a performance problem for a correctness and operations problem that never goes away.</p>
+<hr>
+</section>
+<section id="further-reading" class="level2">
+<h2 class="anchored" data-anchor-id="further-reading">Further Reading</h2>
+<ul>
+<li>Martin Kleppmann, <em>Designing Data-Intensive Applications</em>: the standard reference for replication, partitioning, and consistency.</li>
+<li>Alex Petrov, <em>Database Internals</em>: storage engines and distributed systems from the inside.</li>
+<li><a href="https://use-the-index-luke.com/">Use The Index, Luke</a>: indexing and query performance.</li>
+<li><a href="https://www.postgresql.org/docs/current/high-availability.html">PostgreSQL documentation: High Availability, Load Balancing, and Replication</a></li>
+<li><a href="https://docs.djangoproject.com/en/stable/topics/db/multi-db/">Django documentation: Multiple databases</a>: database routers and <code>using()</code>.</li>
+<li><a href="https://vitess.io/docs/">Vitess</a> and <a href="https://docs.citusdata.com/">Citus</a> documentation: sharding MySQL and PostgreSQL.</li>
+<li><a href="https://jepsen.io/analyses">Jepsen</a>: how distributed databases actually behave under failure.</li>
+</ul>
+<hr>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/bthek1\.github\.io\/Back_End");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<script src="https://utteranc.es/client.js" repo="quarto-dev/quarto-web" issue-term="pathname" theme="github-light" crossorigin="anonymous" async="">
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../Databases/sql.html" class="pagination-link" aria-label="SQL">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">SQL</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../Databases/mysql_&amp;_mariadb.html" class="pagination-link" aria-label="MariaDB and MySQL">
+        <span class="nav-page-text">MariaDB and MySQL</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link active" href="../index.html" aria-current="page">
+<p>Trademark</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/bthek1/bthek1_blog/issues">
+<p>FAQ</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://bthek1.github.io/bthek1_blog/index.html">
+<p>License</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="../index.html">
+<p>Trademark</p>
+</a>
+  </li>  
+</ul>
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.dev/bthek1/Back_End/blob/main/Databases/01_Database_Scaling.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/Back_End/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/bthek1">
+      <i class="bi bi-github" role="img" aria-label="Github">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/benedict-thekkel/">
+      <i class="bi bi-linkedin" role="img" aria-label="Linkedin">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
