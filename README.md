@@ -72,7 +72,7 @@ Five pages on the same subject, because this is where Django applications get sl
 | [Allauth](Django/04_1_Allauth_Users.ipynb) | Third-party accounts and social login |
 | [Permissions](Django/03_0_Permissions.ipynb) | Controlling who can reach which endpoint |
 | [Permission Rules](Django/03_1_Permission_Rules.ipynb) | Object-level permissions expressed as plain Python functions, via django-rules |
-| [Permission Types](Django/03_2_Permission%20_Types.ipynb) | Access control models for SaaS specifically, and how to choose between them |
+| [Permission Types](Django/03_2_Permission_Types.ipynb) | Access control models for SaaS specifically, and how to choose between them |
 | [Security](Django/02_1_Security.ipynb) | Secure coding practice, audits, and the tooling that finds problems |
 | [Secrets](Django/12_Secrets.ipynb) | Keeping credentials out of the repository |
 
@@ -140,7 +140,7 @@ Independent of Django, because the choice outlives the application.
 | [PostgreSQL Setup](Databases/PostgreSQL/02_PostgreSQL_Setup.ipynb) | Getting it running |
 | [PostgreSQL Extensions](Databases/PostgreSQL/03_pqsl_extensions.ipynb) | What extensions are, how they work, and a catalogue grouped by use case |
 | [TimescaleDB](Databases/PostgreSQL/04_TimescaleDB.ipynb) | Time-series inside Postgres, driven from Django |
-| [MySQL and MariaDB](Databases/02_MySQL_%26_MariaDB.ipynb) | The other major open-source relational option |
+| [MySQL and MariaDB](Databases/02_MySQL_and_MariaDB.ipynb) | The other major open-source relational option |
 | [SQLite](Databases/03_SQLite.ipynb) | Serverless and zero-configuration, for embedded use and development |
 | [DuckDB](Databases/05_DuckDB.ipynb) | The analytical counterpart, aimed at data and ML work rather than transactions |
 | [Redis](Databases/04_Redis.ipynb) | In-memory store used as cache, broker, and database, with the data structures that make it flexible |
@@ -155,6 +155,6 @@ Independent of Django, because the choice outlives the application.
 - **No API versioning or deprecation strategy**, despite the depth of DRF coverage.
 - **Nothing on rate limiting or throttling** as a subject of its own.
 - **[QuerySets](Django/16_1_QuerySets.ipynb), [Indexing and Caching](Django/28_Indexing_and_Caching.ipynb), and [Email](Django/22_Django_mail.ipynb) are thin** at four to five cells, and indexing in particular deserves more given how often it is the answer.
-- `Django/03_2_Permission _Types.ipynb` has a stray space in its filename, which is why its URL looks wrong.
+- `Django/03_2_Permission_Types.ipynb` has a stray space in its filename, which is why its URL looks wrong.
 
 ------------------------------------------------------------------------
