@@ -117,6 +117,17 @@ Five pages on the same subject, because this is where Django applications get sl
 
 ------------------------------------------------------------------------
 
+## FastAPI
+
+The async-first alternative, for API-only services, IO-heavy work and model serving. Both pages compare against the Django way at the end.
+
+| Page | Covers |
+|----|----|
+| [FastAPI Stack](FastAPI/00_FastAPI_Stack.ipynb) | The standard stack, one choice per layer, and a small working service from settings to tests and deployment |
+| [SQLAlchemy and Alembic](FastAPI/01_SQLAlchemy_Alembic.ipynb) | The ORM and migrations outside Django: async sessions, the lazy-loading trap, and migrations that do not lose data |
+
+------------------------------------------------------------------------
+
 ## Databases
 
 Independent of Django, because the choice outlives the application.
@@ -139,7 +150,7 @@ Independent of Django, because the choice outlives the application.
 
 ## Not Covered Yet
 
-- **No FastAPI or Flask.** Django is the only web framework here, so there is no comparison against the async-first alternatives.
+- **No Flask, and FastAPI is only two pages.** Auth beyond JWT, WebSockets and FastAPI-specific deployment are touched on, not covered in depth.
 - **Nothing on deployment.** Getting the application onto a server is covered in [Web Development](https://bthek1.github.io/WEB_doc/) and [IaaS](https://bthek1.github.io/IaaS_docs/), not here, so this site stops at the code.
 - **No API versioning or deprecation strategy**, despite the depth of DRF coverage.
 - **Nothing on rate limiting or throttling** as a subject of its own.
