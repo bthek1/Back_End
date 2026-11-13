@@ -28,3 +28,4 @@ version = {attr = "Back_End.__version__"}
 include = ["Back_End"]
 
 [tool.nbdev]
+custom_sidebar = true
