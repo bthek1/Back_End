@@ -151,7 +151,7 @@ Independent of Django, because the choice outlives the application.
 ## Not Covered Yet
 
 - **No Flask, and FastAPI is only two pages.** Auth beyond JWT, WebSockets and FastAPI-specific deployment are touched on, not covered in depth.
-- **Nothing on deployment.** Getting the application onto a server is covered in [Web Development](https://bthek1.github.io/WEB_doc/) and [IaaS](https://bthek1.github.io/IaaS_docs/), not here, so this site stops at the code.
+- **Nothing on deployment.** Getting the application onto a server is covered in [Web Development](https://bthek1.github.io/Web_development/) and [IaaS](https://bthek1.github.io/IaaS_docs/), not here, so this site stops at the code.
 - **No API versioning or deprecation strategy**, despite the depth of DRF coverage.
 - **Nothing on rate limiting or throttling** as a subject of its own.
 - **[QuerySets](Django/16_1_QuerySets.ipynb), [Indexing and Caching](Django/28_Indexing_and_Caching.ipynb), and [Email](Django/22_Django_mail.ipynb) are thin** at four to five cells, and indexing in particular deserves more given how often it is the answer.
