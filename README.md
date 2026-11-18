@@ -128,6 +128,16 @@ The async-first alternative, for API-only services, IO-heavy work and model serv
 
 ------------------------------------------------------------------------
 
+## .NET
+
+The compiled, statically typed alternative, explained from a Python and Django background.
+
+| Page | Covers |
+|----|----|
+| [.NET Overview](dotNet/00_dotNet_Overview.ipynb) | The platform and its names, how C# builds and runs, supported versions, a small ASP.NET Core API, and a comparison with Django and FastAPI |
+
+------------------------------------------------------------------------
+
 ## Databases
 
 Independent of Django, because the choice outlives the application.
@@ -151,6 +161,7 @@ Independent of Django, because the choice outlives the application.
 ## Not Covered Yet
 
 - **No Flask, and FastAPI is only two pages.** Auth beyond JWT, WebSockets and FastAPI-specific deployment are touched on, not covered in depth.
+- **.NET is one overview page.** EF Core, authentication and testing are summarised there, not covered in depth.
 - **Nothing on deployment.** Getting the application onto a server is covered in [Web Development](https://bthek1.github.io/Web_development/) and [IaaS](https://bthek1.github.io/IaaS_docs/), not here, so this site stops at the code.
 - **No API versioning or deprecation strategy**, despite the depth of DRF coverage.
 - **Nothing on rate limiting or throttling** as a subject of its own.
