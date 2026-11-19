@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" width="960" height="280" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>EF Core loads entities, tracks changes and writes the differences in one transaction</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="960" height="280" fill="#ffffff"/>
+
+  <!-- Database -->
+  <rect x="20" y="80" width="150" height="120" rx="8" fill="#e0f2fe" stroke="#0369a1"/>
+  <text x="95" y="135" text-anchor="middle" font-weight="bold">PostgreSQL</text>
+  <text x="95" y="154" text-anchor="middle" fill="#475569">Price = 10.00</text>
+
+  <!-- DbContext -->
+  <rect x="240" y="30" width="430" height="220" rx="10" fill="#f8fafc" stroke="#475569"/>
+  <text x="455" y="54" text-anchor="middle" font-weight="bold" font-size="15">DbContext (change tracker)</text>
+
+  <rect x="262" y="72" width="185" height="82" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="354" y="100" text-anchor="middle" font-weight="bold">Original snapshot</text>
+  <text x="354" y="122" text-anchor="middle" fill="#475569">Price = 10.00</text>
+
+  <rect x="463" y="72" width="185" height="82" rx="8" fill="#fef3c7" stroke="#b45309"/>
+  <text x="555" y="100" text-anchor="middle" font-weight="bold">Your entity</text>
+  <text x="555" y="122" text-anchor="middle" fill="#475569">Price = 12.50</text>
+
+  <rect x="262" y="172" width="386" height="58" rx="8" fill="#dcfce7" stroke="#15803d"/>
+  <text x="455" y="196" text-anchor="middle" font-weight="bold">DetectChanges compares both</text>
+  <text x="455" y="216" text-anchor="middle" fill="#475569">State = Modified, changed column = Price</text>
+
+  <!-- Arrows -->
+  <line x1="170" y1="110" x2="260" y2="110" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <text x="215" y="100" text-anchor="middle" fill="#475569">1. query</text>
+
+  <line x1="260" y1="200" x2="172" y2="170" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <text x="208" y="214" text-anchor="middle" fill="#475569">3. UPDATE</text>
+
+  <!-- Steps -->
+  <rect x="710" y="62" width="230" height="156" rx="8" fill="#ede9fe" stroke="#6d28d9"/>
+  <text x="825" y="88" text-anchor="middle" font-weight="bold">Your code</text>
+  <text x="726" y="116" fill="#1e293b">1. Load the entity</text>
+  <text x="726" y="142" fill="#1e293b">2. Change a property</text>
+  <text x="726" y="168" fill="#1e293b">3. SaveChangesAsync()</text>
+  <text x="726" y="196" fill="#475569">One transaction</text>
+</svg>

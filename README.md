@@ -128,13 +128,30 @@ The async-first alternative, for API-only services, IO-heavy work and model serv
 
 ------------------------------------------------------------------------
 
-## .NET
+## ASP.NET Core
 
-The compiled, statically typed alternative, explained from a Python and Django background.
+The compiled, statically typed alternative, explained from a Python and Django background. Read the pages in order. The examples have not been compiled yet.
 
 | Page | Covers |
 |----|----|
-| [.NET Overview](dotNet/00_dotNet_Overview.ipynb) | The platform and its names, how C# builds and runs, supported versions, a small ASP.NET Core API, and a comparison with Django and FastAPI |
+| [.NET Overview](ASP.NET/00_dotNet_Overview.ipynb) | The platform and its names, how C# builds and runs, supported versions, a small ASP.NET Core API, and a comparison with Django and FastAPI |
+| [C# and .NET Basics](ASP.NET/01_CSharp_Basics.ipynb) | Nullability, records, generics, LINQ and async, mapped from Python |
+| [Hosting and Startup](ASP.NET/02_Hosting_and_Startup.ipynb) | `Program.cs`, the Kestrel server, environments and graceful shutdown |
+| [Dependency Injection](ASP.NET/03_Dependency_Injection.ipynb) | The service container, the three lifetimes and the captive dependency bug |
+| [Middleware Pipeline](ASP.NET/04_Middleware.ipynb) | Required component order, custom middleware and endpoint filters |
+| [Configuration](ASP.NET/05_Configuration.ipynb) | Layered settings, validated options classes and secrets |
+| [Routing](ASP.NET/06_Routing.ipynb) | Route templates, constraints, groups, precedence and URL generation |
+| [Web APIs](ASP.NET/07_Web_APIs.ipynb) | Minimal APIs, controllers, typed results, OpenAPI, pagination, CORS and versioning |
+| [Model Binding and Validation](ASP.NET/08_Model_Binding_and_Validation.ipynb) | Binding sources, request records, data annotations and FluentValidation |
+| [Entity Framework Core](ASP.NET/09_EF_Core.ipynb) | Entities, LINQ queries, change tracking, migrations, transactions and the N+1 problem on PostgreSQL |
+| [Authentication and Authorization](ASP.NET/10_Authentication_and_Authorization.ipynb) | JWT validation, cookies, Identity, policies and resource-based checks |
+| [Error Handling and Logging](ASP.NET/11_Errors_and_Logging.ipynb) | Problem Details, exception handlers, structured logs and OpenTelemetry |
+| [Caching and Performance](ASP.NET/12_Caching_and_Performance.ipynb) | Measurement, HybridCache, output caching, rate limiting and common bottlenecks |
+| [Background Work](ASP.NET/13_Background_Work.ipynb) | Hosted services, in-process queues, Hangfire, idempotent jobs and the outbox pattern |
+| [Real-Time and Service Calls](ASP.NET/14_Realtime_and_gRPC.ipynb) | Server-Sent Events, SignalR, WebSockets and gRPC |
+| [Server-Rendered UI](ASP.NET/15_Server_Rendered_UI.ipynb) | Razor, Razor Pages, MVC, Blazor render modes and hosting a React build |
+| [Testing](ASP.NET/16_Testing.ipynb) | xUnit, `WebApplicationFactory`, Testcontainers and fake authentication |
+| [Deployment](ASP.NET/17_Deployment.ipynb) | Docker images, health checks, reverse proxies, migrations and GitHub Actions with OIDC |
 
 ------------------------------------------------------------------------
 
@@ -161,7 +178,7 @@ Independent of Django, because the choice outlives the application.
 ## Not Covered Yet
 
 - **No Flask, and FastAPI is only two pages.** Auth beyond JWT, WebSockets and FastAPI-specific deployment are touched on, not covered in depth.
-- **.NET is one overview page.** EF Core, authentication and testing are summarised there, not covered in depth.
+- **The ASP.NET Core examples have not been compiled or run.** Each page says so at the top.
 - **Nothing on deployment.** Getting the application onto a server is covered in [Web Development](https://bthek1.github.io/Web_development/) and [IaaS](https://bthek1.github.io/IaaS_docs/), not here, so this site stops at the code.
 - **No API versioning or deprecation strategy**, despite the depth of DRF coverage.
 - **Nothing on rate limiting or throttling** as a subject of its own.
