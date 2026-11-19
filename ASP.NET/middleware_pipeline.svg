@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>A request passes through middleware in order and the response returns in reverse order</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="960" height="300" fill="#ffffff"/>
+
+  <!-- Client -->
+  <rect x="20" y="90" width="90" height="120" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="65" y="155" text-anchor="middle" font-weight="bold">Client</text>
+
+  <!-- Middleware columns -->
+  <rect x="150" y="50" width="120" height="200" rx="8" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="210" y="74" text-anchor="middle" font-weight="bold">Exception</text>
+  <text x="210" y="91" text-anchor="middle" font-weight="bold">handler</text>
+
+  <rect x="290" y="50" width="120" height="200" rx="8" fill="#e0f2fe" stroke="#0369a1"/>
+  <text x="350" y="74" text-anchor="middle" font-weight="bold">Routing</text>
+  <text x="350" y="91" text-anchor="middle" fill="#475569">selects endpoint</text>
+
+  <rect x="430" y="50" width="120" height="200" rx="8" fill="#ede9fe" stroke="#6d28d9"/>
+  <text x="490" y="74" text-anchor="middle" font-weight="bold">Authentication</text>
+  <text x="490" y="91" text-anchor="middle" fill="#475569">who is calling</text>
+
+  <rect x="570" y="50" width="120" height="200" rx="8" fill="#fef3c7" stroke="#b45309"/>
+  <text x="630" y="74" text-anchor="middle" font-weight="bold">Authorization</text>
+  <text x="630" y="91" text-anchor="middle" fill="#475569">what is allowed</text>
+
+  <!-- Endpoint -->
+  <rect x="730" y="90" width="200" height="120" rx="8" fill="#dcfce7" stroke="#15803d"/>
+  <text x="830" y="145" text-anchor="middle" font-weight="bold">Endpoint</text>
+  <text x="830" y="164" text-anchor="middle" fill="#475569">your handler</text>
+
+  <!-- Request arrow -->
+  <line x1="110" y1="125" x2="728" y2="125" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <text x="210" y="118" text-anchor="middle" fill="#475569">request</text>
+
+  <!-- Response arrow -->
+  <line x1="730" y1="185" x2="112" y2="185" stroke="#475569" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a)"/>
+  <text x="210" y="205" text-anchor="middle" fill="#475569">response</text>
+
+  <text x="480" y="280" text-anchor="middle" fill="#475569">Code before next() runs on the way in. Code after next() runs on the way out.</text>
+</svg>
