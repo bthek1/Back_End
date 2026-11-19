@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" width="960" height="420" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>How the ASP.NET Core topics fit together, by notebook number</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="960" height="420" fill="#ffffff"/>
+
+  <!-- Foundations -->
+  <text x="20" y="50" font-weight="bold">Foundations</text>
+  <text x="20" y="68" fill="#475569">used everywhere</text>
+  <rect x="150" y="20" width="185" height="70" rx="8" fill="#fef3c7" stroke="#b45309"/>
+  <text x="242" y="60" text-anchor="middle" font-weight="bold">01 C# basics</text>
+  <rect x="351" y="20" width="185" height="70" rx="8" fill="#fef3c7" stroke="#b45309"/>
+  <text x="443" y="60" text-anchor="middle" font-weight="bold">02 Hosting and startup</text>
+  <rect x="552" y="20" width="185" height="70" rx="8" fill="#fef3c7" stroke="#b45309"/>
+  <text x="644" y="60" text-anchor="middle" font-weight="bold">03 Dependency injection</text>
+  <rect x="753" y="20" width="185" height="70" rx="8" fill="#fef3c7" stroke="#b45309"/>
+  <text x="845" y="60" text-anchor="middle" font-weight="bold">05 Configuration</text>
+
+  <!-- Request path -->
+  <text x="20" y="150" font-weight="bold">Request path</text>
+  <text x="20" y="168" fill="#475569">inside the</text>
+  <text x="20" y="186" fill="#475569">04 Middleware</text>
+  <text x="20" y="204" fill="#475569">pipeline</text>
+  <rect x="150" y="125" width="140" height="80" rx="8" fill="#e0f2fe" stroke="#0369a1"/>
+  <text x="220" y="170" text-anchor="middle" font-weight="bold">06 Routing</text>
+  <rect x="312" y="125" width="140" height="80" rx="8" fill="#ede9fe" stroke="#6d28d9"/>
+  <text x="382" y="160" text-anchor="middle" font-weight="bold">10 Authentication</text>
+  <text x="382" y="180" text-anchor="middle" font-weight="bold">and authorization</text>
+  <rect x="474" y="125" width="140" height="80" rx="8" fill="#e0f2fe" stroke="#0369a1"/>
+  <text x="544" y="160" text-anchor="middle" font-weight="bold">08 Binding</text>
+  <text x="544" y="180" text-anchor="middle" font-weight="bold">and validation</text>
+  <rect x="636" y="125" width="140" height="80" rx="8" fill="#dcfce7" stroke="#15803d"/>
+  <text x="706" y="160" text-anchor="middle" font-weight="bold">07 Web API</text>
+  <text x="706" y="180" text-anchor="middle" font-weight="bold">handler</text>
+  <rect x="798" y="125" width="140" height="80" rx="8" fill="#dcfce7" stroke="#15803d"/>
+  <text x="868" y="160" text-anchor="middle" font-weight="bold">09 EF Core</text>
+  <text x="868" y="180" text-anchor="middle" fill="#475569">PostgreSQL</text>
+  <line x1="290" y1="165" x2="311" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="452" y1="165" x2="473" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="614" y1="165" x2="635" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="776" y1="165" x2="797" y2="165" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- Capabilities -->
+  <text x="20" y="262" font-weight="bold">Capabilities</text>
+  <text x="20" y="280" fill="#475569">added as needed</text>
+  <rect x="150" y="235" width="140" height="70" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="220" y="266" text-anchor="middle" font-weight="bold">11 Errors</text>
+  <text x="220" y="284" text-anchor="middle" font-weight="bold">and logging</text>
+  <rect x="312" y="235" width="140" height="70" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="382" y="266" text-anchor="middle" font-weight="bold">12 Caching</text>
+  <text x="382" y="284" text-anchor="middle" font-weight="bold">and performance</text>
+  <rect x="474" y="235" width="140" height="70" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="544" y="266" text-anchor="middle" font-weight="bold">13 Background</text>
+  <text x="544" y="284" text-anchor="middle" font-weight="bold">work</text>
+  <rect x="636" y="235" width="140" height="70" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="706" y="266" text-anchor="middle" font-weight="bold">14 Real-time</text>
+  <text x="706" y="284" text-anchor="middle" font-weight="bold">and gRPC</text>
+  <rect x="798" y="235" width="140" height="70" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="868" y="266" text-anchor="middle" font-weight="bold">15 Server-</text>
+  <text x="868" y="284" text-anchor="middle" font-weight="bold">rendered UI</text>
+
+  <!-- Delivery -->
+  <text x="20" y="362" font-weight="bold">Delivery</text>
+  <text x="20" y="380" fill="#475569">proof and release</text>
+  <rect x="150" y="335" width="385" height="65" rx="8" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="342" y="373" text-anchor="middle" font-weight="bold">16 Testing</text>
+  <rect x="553" y="335" width="385" height="65" rx="8" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="745" y="373" text-anchor="middle" font-weight="bold">17 Deployment</text>
+</svg>

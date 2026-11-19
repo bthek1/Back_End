@@ -134,6 +134,7 @@ The compiled, statically typed alternative, explained from a Python and Django b
 
 | Page | Covers |
 |----|----|
+| [ASP.NET Core Overview](ASP.NET/00_ASPNET_Core_Overview.ipynb) | The map of this section: how the 17 topics fit together, reading paths, the main differences from Django, and a first project in five milestones |
 | [.NET Overview](ASP.NET/00_dotNet_Overview.ipynb) | The platform and its names, how C# builds and runs, supported versions, a small ASP.NET Core API, and a comparison with Django and FastAPI |
 | [C# and .NET Basics](ASP.NET/01_CSharp_Basics.ipynb) | Nullability, records, generics, LINQ and async, mapped from Python |
 | [Hosting and Startup](ASP.NET/02_Hosting_and_Startup.ipynb) | `Program.cs`, the Kestrel server, environments and graceful shutdown |
